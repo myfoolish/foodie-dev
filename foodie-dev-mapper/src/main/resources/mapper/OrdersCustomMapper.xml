@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.xw.mapper.OrdersCustomMapper" >
+  <resultMap id="myOrdersVO" type="com.xw.pojo.vo.MyOrdersVO" >
+    <id column="orderId" property="orderId" jdbcType="VARCHAR" />
+    <result column="createdTime" property="createdTime" jdbcType="VARCHAR" />
+    <result column="payMethod" property="payMethod" jdbcType="INTEGER" />
+    <result column="realPayAmount" property="realPayAmount" jdbcType="INTEGER" />
+    <result column="postAmount" property="postAmount" jdbcType="INTEGER" />
+    <result column="isComment" property="isComment" jdbcType="INTEGER" />
+    <result column="orderStatus" property="orderStatus" jdbcType="INTEGER" />
+    <!--
+      collection 标签：用于定义关联的 list 集合类型的封装规则
+      property：对应三级分类的 list 属性名
+      ofType：集合的类型，三级分类的 VO
+    -->
+    <collection property="subOrderItemList" select="getSubItems" column="orderId" ofType="com.xw.pojo.vo.MySubOrderItemVO">
+      <id column="itemId" property="itemId" jdbcType="VARCHAR" />
+      <result column="itemName" property="itemName" jdbcType="VARCHAR" />
+      <result column="itemImg" property="itemImg" jdbcType="VARCHAR" />
+      <result column="itemSpecId" property="itemSpecId" jdbcType="VARCHAR" />
+      <result column="itemSpecName" property="itemSpecName" jdbcType="VARCHAR" />
+      <result column="buyCounts" property="buyCounts" jdbcType="INTEGER" />
+      <result column="price" property="price" jdbcType="INTEGER" />
+    </collection>
+  </resultMap>
+
+  <!-- resultMap 用来做映射 -->
+  <select id="queryMyOrders" resultMap="myOrdersVO" parameterType="Map">
+      select o.id              as orderId,
+             o.created_time    as createdTime,
+             o.pay_method      as payMethod,
+             o.real_pay_amount as realPayAmount,
+             o.post_amount     as postAmount,
+             o.is_comment      as isComment,
+             os.order_status   as orderStatus
+      from orders o
+               left join order_status os on o.id = os.order_id
+      where o.user_id = #{paramsMap.userId}
+        and o.is_delete = '0'
+        <if test="paramsMap.orderStatus != null">
+            and os.order_status = #{paramsMap.orderStatus}
+        </if>
+  </select>
+
+    <select id="getSubItems" parameterType="String" resultType="com.xw.pojo.vo.MySubOrderItemVO">
+        select oi.item_id        as itemId,
+               oi.item_name      as itemName,
+               oi.item_img       as itemImg,
+               oi.item_spec_id   as itemSpecId,
+               oi.item_spec_name as itemSpecName,
+               oi.buy_counts     as buyCounts,
+               oi.price          as price
+        from order_items oi
+        where oi.order_id = #{orderId}
+    </select>
+
+    <select id="queryMyOrdersDoNotUse" resultMap="myOrdersVO" parameterType="Map">
+        select o.id              as orderId,
+               o.created_time    as createdTime,
+               o.pay_method      as payMethod,
+               o.real_pay_amount as realPayAmount,
+               o.post_amount     as postAmount,
+               os.order_status   as orderStatus,
+               oi.item_id        as itemId,
+               oi.item_name      as itemName,
+               oi.item_img       as itemImg,
+               oi.item_spec_id   as itemSpecId,
+               oi.item_spec_name as itemSpecName,
+               oi.buy_counts     as buyCounts,
+               oi.price          as price
+        from orders o
+        left join order_status os on o.id = os.order_id
+        left join order_items oi on o.id = oi.order_id
+        where o.user_id = #{paramsMap.userId}
+        and o.is_delete = '0'
+        <if test="paramsMap.orderStatus != null">
+            and os.order_status = #{paramsMap.orderStatus}
+        </if>
+    </select>
+
+    <select id="getMyOrderStatusCounts" resultType="int" parameterType="Map">
+        select count(1)
+        from orders o
+        left join order_status os on o.id = os.order_id
+        where o.user_id = #{paramsMap.userId}
+        and os.order_status = #{paramsMap.orderStatus}
+        <if test="paramsMap.isComment != null">
+            and o.is_comment = #{paramsMap.isComment}
+        </if>
+    </select>
+
+    <select id="getMyOrderTrend" resultType="com.xw.pojo.OrderStatus" parameterType="Map">
+        select os.order_id     as orderId,
+               os.order_status as orderStatus,
+               os.created_time as createdTime,
+               os.pay_time     as payTime,
+               os.deliver_time as deliverTime,
+               os.success_time as successTime,
+               os.close_time   as closeTime,
+               os.comment_time as commentTime
+        from orders o
+                 left join order_status os on o.id = os.order_id
+        where o.is_delete = 0
+          and o.user_id = #{paramsMap.userId}
+          and os.order_status in (20, 30, 40)
+        order by os.order_id desc
+    </select>
+</mapper>

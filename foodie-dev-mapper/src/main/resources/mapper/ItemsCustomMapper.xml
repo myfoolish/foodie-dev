@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.xw.mapper.ItemsCustomMapper" >
+  
+  <select id="queryItemsComments" resultType="com.xw.pojo.vo.ItemsCommentsVO" parameterType="Map">
+    SELECT ic.comment_level AS commentLevel,
+           ic.content       AS content,
+           ic.spec_name     AS specName,
+           ic.created_time  AS createdTime,
+           u.face           AS userFace,
+           u.nickname       AS nickname
+    FROM items_comments ic
+           LEFT JOIN users u ON ic.user_id = u.id
+    WHERE ic.item_id = #{paramsMap.itemId}
+      <if test=" paramsMap.level != null and paramsMap.level != '' " >
+        AND ic.comment_level = #{paramsMap.level}
+      </if>
+  </select>
+
+    <select id="searchItems" resultType="com.xw.pojo.vo.SearchItemsVO" parameterType="Map">
+        SELECT i.id                    AS itemId,
+               i.item_name             AS itemName,
+               i.sell_counts           AS sellCounts,
+               ii.url                  AS imgUrl,
+               tempSpec.price_discount AS price
+        FROM items i
+                 LEFT JOIN items_img ii ON i.id = ii.item_id
+                 LEFT JOIN (SELECT item_id, MIN(price_discount) AS price_discount
+                            FROM items_spec
+                            GROUP BY item_id) tempSpec
+                           ON i.id = tempSpec.item_id
+        WHERE ii.is_main = 1
+        <if test=" paramsMap.keywords != null and paramsMap.keywords !='' ">
+            AND i.item_name like '%${paramsMap.keywords}%'
+        </if>
+        order by
+        <choose>
+            <!--
+                k(keywords)：默认，根据name排序
+                c(sellCounts)：根据销量排序
+                p(price)：根据价格排序
+                &quot;：单引号转义字符
+             -->
+            <when test="paramsMap.sort == &quot;c&quot; ">
+                i.sell_counts DESC
+            </when>
+            <when test="paramsMap.sort == &quot;p&quot; ">
+                tempSpec.price_discount ASC
+            </when>
+            <otherwise>
+                i.item_name ASC
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="searchItemsByThirdCategoryId" resultType="com.xw.pojo.vo.SearchItemsVO" parameterType="Map">
+        SELECT i.id                    AS itemId,
+               i.item_name             AS itemName,
+               i.sell_counts           AS sellCounts,
+               ii.url                  AS imgUrl,
+               tempSpec.price_discount AS price
+        FROM items i
+                 LEFT JOIN items_img ii ON i.id = ii.item_id
+                 LEFT JOIN (SELECT item_id, MIN(price_discount) AS price_discount
+                            FROM items_spec
+                            GROUP BY item_id) tempSpec
+                           ON i.id = tempSpec.item_id
+        WHERE ii.is_main = 1
+        AND i.cat_id = #{paramsMap.categoryId}
+        order by
+        <choose>
+            <when test="paramsMap.sort == &quot;c&quot; ">
+                i.sell_counts DESC
+            </when>
+            <when test="paramsMap.sort == &quot;p&quot; ">
+                tempSpec.price_discount ASC
+            </when>
+            <otherwise>
+                i.item_name ASC
+            </otherwise>
+        </choose>
+    </select>
+    
+    <select id="queryItemsBySpecIds" resultType="com.xw.pojo.vo.ShopCartVO" parameterType="List">
+        select i.id               as itemId,
+               i.item_name        as itemName,
+               ii.url             as itemImgUrl,
+               is2.id             as specId,
+               is2.name           as specName,
+               is2.price_discount as priceDiscount,
+               is2.price_normal   as priceNormal
+        from items i
+                 left join items_img ii on i.id = ii.item_id
+                 left join items_spec is2 on i.id = is2.item_id
+        where ii.is_main = 1
+          AND is2.id IN
+            <foreach collection="paramsList" index="index" item="specId" open="(" close=")" separator=",">
+                #{specId}
+            </foreach>
+    </select>
+
+    <update id="decreaseItemsSpecStock">
+        update items_spec
+        set stock = stock - #{pendingCounts}
+        where id = #{specId}
+          and stock >= #{pendingCounts}
+    </update>
+</mapper>

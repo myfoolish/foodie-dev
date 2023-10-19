@@ -1,0 +1,5 @@
+# 配置数据源信息
+spring:
+  datasource:                                   # 数据源的相关配置
+    url: jdbc:mysql://localhost:3306/foodie-shop-dev?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=GMT%2B8
+    password: root
